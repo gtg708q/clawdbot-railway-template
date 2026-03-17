@@ -1,5 +1,5 @@
 # Runtime image — openclaw installed directly from npm (always latest)
-# cache-bust: 2026-03-17T22:08:32Z
+# cache-bust: 2026-03-17T22:27:54Z
 FROM node:22-bookworm
 ENV NODE_ENV=production
 
@@ -13,8 +13,12 @@ RUN apt-get update \
 
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
-# Install openclaw globally to /usr/local (system default, available in PATH)
+# Install openclaw globally to /usr/local
 RUN npm install -g openclaw@latest
+
+# Tell the wrapper where to find the openclaw entry point
+ENV OPENCLAW_ENTRY=/usr/local/lib/node_modules/openclaw/dist/entry.js
+ENV OPENCLAW_NODE=node
 
 # At runtime, redirect user npm installs to the persistent volume
 ENV NPM_CONFIG_PREFIX=/data/npm
