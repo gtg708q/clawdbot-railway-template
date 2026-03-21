@@ -17,10 +17,18 @@ RUN apt-get update \
     > /etc/apt/sources.list.d/github-cli.list \
   && apt-get update \
   && apt-get install -y --no-install-recommends gh \
+    librsvg2-bin \
+    imagemagick \
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+    libgbm1 libasound2 libpango-1.0-0 libcairo2 libatspi2.0-0 \
   && rm -rf /var/lib/apt/lists/*
 
 # Install D2 diagram scripting language
 RUN curl -fsSL https://d2lang.com/install.sh | sh -s --
+
+# Install Puppeteer (headless Chrome for HTML→PNG rendering)
+RUN npm install -g puppeteer
 
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
