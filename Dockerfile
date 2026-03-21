@@ -19,6 +19,9 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends gh \
   && rm -rf /var/lib/apt/lists/*
 
+# Install D2 diagram scripting language
+RUN curl -fsSL https://d2lang.com/install.sh | sh -s --
+
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
 # Install openclaw globally to /usr/local
