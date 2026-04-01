@@ -1,5 +1,4 @@
 # Runtime image — openclaw installed directly from npm (always latest)
-# cache-bust: 2026-03-17T22:27:54Z
 FROM node:22-bookworm
 ENV NODE_ENV=production
 
@@ -32,8 +31,9 @@ RUN npm install -g puppeteer
 
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
-# Install openclaw globally to /usr/local
-RUN npm install -g openclaw@latest
+# Always fetch the latest openclaw version on every deploy.
+# The echo ensures the layer fingerprint changes each build, busting Docker cache.
+RUN echo "openclaw-install-$(date +%s)" && npm install -g openclaw@latest
 
 # Tell the wrapper where to find the openclaw entry point
 ENV OPENCLAW_ENTRY=/usr/local/lib/node_modules/openclaw/dist/entry.js
