@@ -178,6 +178,18 @@ async function startGateway() {
   fs.mkdirSync(STATE_DIR, { recursive: true });
   fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
 
+  // Persist exec-approvals.json across redeploys by symlinking from the
+  // ephemeral ~/.openclaw/ dir to the persistent STATE_DIR volume.
+  const homeOpenClaw = path.join(os.homedir(), ".openclaw");
+  const persistedApprovals = path.join(STATE_DIR, "exec-approvals.json");
+  const homeApprovals = path.join(homeOpenClaw, "exec-approvals.json");
+  if (fs.existsSync(persistedApprovals)) {
+    fs.mkdirSync(homeOpenClaw, { recursive: true });
+    try { fs.unlinkSync(homeApprovals); } catch {}
+    fs.symlinkSync(persistedApprovals, homeApprovals);
+    console.log(`[startup] Symlinked exec-approvals: ${homeApprovals} -> ${persistedApprovals}`);
+  }
+
   const args = [
     "gateway",
     "run",
