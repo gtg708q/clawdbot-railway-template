@@ -1462,11 +1462,23 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
   // work even if nobody visits the web UI.
   if (isConfigured()) {
     console.log("[wrapper] config detected; starting gateway...");
-    try {
-      await ensureGatewayRunning();
-      console.log("[wrapper] gateway ready");
-    } catch (err) {
-      console.error(`[wrapper] gateway failed to start at boot: ${String(err)}`);
+    // Retry a few times: after an image upgrade the gateway may install or
+    // migrate plugins during startup and then exit with "Restart OpenClaw so
+    // state migrations run against the final config" — a second launch
+    // converges. Without a retry the wrapper would sit idle (healthz green)
+    // with no gateway until something proxies a request to it.
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await ensureGatewayRunning();
+        console.log("[wrapper] gateway ready");
+        break;
+      } catch (err) {
+        console.error(
+          `[wrapper] gateway failed to start at boot (attempt ${attempt}/${maxAttempts}): ${String(err)}`,
+        );
+        if (attempt < maxAttempts) await sleep(5_000);
+      }
     }
   }
 });

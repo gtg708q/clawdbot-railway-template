@@ -34,8 +34,9 @@ RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 # Pin the OpenClaw release installed into the image. Bump the default here (or
 # set an OPENCLAW_VERSION build variable on Railway) to upgrade; a Railway
 # redeploy then rebuilds the image and restarts the gateway on the new version.
-# 2026.9.2 (npm, 2026-09-05) is the first release with the openai/gpt-6-astra model.
-ARG OPENCLAW_VERSION=2026.9.2
+# 2026.9.4 (npm, 2026-09-11): latest stable; ships anthropic/claude-fable-5-1 and
+# openai/gpt-6-astra in the model catalog.
+ARG OPENCLAW_VERSION=2026.9.4
 RUN echo "openclaw-install-${OPENCLAW_VERSION}" && npm install -g "openclaw@${OPENCLAW_VERSION}"
 
 # Tell the wrapper where to find the openclaw entry point
