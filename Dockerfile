@@ -1,5 +1,6 @@
 # Runtime image — openclaw installed directly from npm (pinned via OPENCLAW_VERSION)
-FROM node:22-bookworm
+# OpenClaw >= 2026.9.3 requires Node >=24.16.0 <25 (engines check fails the install on 22).
+FROM node:24-bookworm
 ENV NODE_ENV=production
 
 RUN apt-get update \
