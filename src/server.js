@@ -1344,8 +1344,15 @@ proxy.on("error", (err, _req, res) => {
 // Require the same SETUP_PASSWORD for the entire Control UI dashboard,
 // not just the /setup routes.  Healthcheck is excluded so Railway probes work.
 function requireDashboardAuth(req, res, next) {
+  // Reject dot-segments and encoded separators before any bypass check: Express
+  // matches on the raw path, but the gateway normalizes it, so "/hooks/../x"
+  // would otherwise skip dashboard auth and land on "/x".
+  const rawPath = (req.originalUrl || req.url || "").split("?")[0];
+  if (/(^|\/)\.\.?(\/|$)|%2e|%2f|%5c|\\/i.test(rawPath)) {
+    return res.status(400).send("Bad path");
+  }
   if (req.path === "/healthz" || req.path === "/setup/healthz") return next();
-  if (req.path.startsWith("/hooks")) return next(); // allow OpenClaw webhook endpoints to bypass dashboard auth
+  if (req.path === "/hooks" || req.path.startsWith("/hooks/")) return next(); // allow OpenClaw webhook endpoints to bypass dashboard auth
   if (!SETUP_PASSWORD) return next(); // no password configured → open
   const header = req.headers.authorization || "";
   const [scheme, encoded] = header.split(" ");
@@ -1363,19 +1370,10 @@ function requireDashboardAuth(req, res, next) {
   return next();
 }
 
-// --- Gateway token injection ---
-// The gateway is only reachable from this container. The Control UI in the browser
-// cannot set custom Authorization headers for WebSocket connections, so we inject
-// the token into proxied requests at the wrapper level.
-function attachGatewayAuthHeader(req) {
-  if (!req?.headers?.authorization && OPENCLAW_GATEWAY_TOKEN) {
-    req.headers.authorization = `Bearer ${OPENCLAW_GATEWAY_TOKEN}`;
-  }
-}
-
-proxy.on("proxyReqWs", (_proxyReq, req) => {
-  attachGatewayAuthHeader(req);
-});
+// Note: the wrapper deliberately does NOT inject OPENCLAW_GATEWAY_TOKEN into
+// proxied requests. Clients authenticate to the gateway themselves (token,
+// device pairing, or setup code). Injecting the token turned any request that
+// bypassed dashboard auth (e.g. /hooks/*) into a fully authenticated one.
 
 app.use(requireDashboardAuth, async (req, res) => {
   // If not configured, force users to /setup for any non-setup routes.
@@ -1399,7 +1397,6 @@ app.use(requireDashboardAuth, async (req, res) => {
     }
   }
 
-  attachGatewayAuthHeader(req);
   return proxy.web(req, res, { target: GATEWAY_TARGET });
 });
 
@@ -1486,7 +1483,7 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
 server.on("upgrade", async (req, socket, head) => {
   // Note: browsers cannot attach arbitrary HTTP headers (including Authorization: Basic)
   // in WebSocket handshakes. Do not enforce dashboard Basic auth at the upgrade layer.
-  // The gateway authenticates at the protocol layer and we inject the gateway token below.
+  // The gateway authenticates at the protocol layer (token, device pairing, or setup code).
 
   if (!isConfigured()) {
     socket.destroy();
@@ -1498,7 +1495,6 @@ server.on("upgrade", async (req, socket, head) => {
     socket.destroy();
     return;
   }
-  attachGatewayAuthHeader(req);
   proxy.ws(req, socket, head, { target: GATEWAY_TARGET });
 });
 
